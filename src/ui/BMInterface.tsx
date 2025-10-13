@@ -275,7 +275,7 @@ export function BMInterface() {
                 >
                     {isSending ? 'Sending BM…' : remainingMs > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textTransform: 'none', width: '100%', padding: '0 16px', boxSizing: 'border-box' }}>
-                            <div style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.15, textAlign: 'center', width: '100%', wordBreak: 'word-break' }}>Brewing your next
+                            <div style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.15, textAlign: 'center', width: '100%', wordBreak: 'break-word' }}>Brewing your next
                                 <br />
                                 Based Morning...
                             </div>
