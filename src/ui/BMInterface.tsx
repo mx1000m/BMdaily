@@ -75,6 +75,8 @@ export function BMInterface() {
         const colors = ['#0052FF', '#1e66ff', '#3962aa', '#7fa8ff', '#93a4d2'];
         confetti({ particleCount: 120, spread: 60, startVelocity: 35, gravity: 0.9, ticks: 200, origin: { x: 0.5, y: 0.6 }, colors });
         setTimeout(() => confetti({ particleCount: 90, spread: 100, startVelocity: 45, gravity: 0.9, ticks: 180, origin: { x: 0.5, y: 0.3 }, colors }), 120);
+        // Show share popup after confetti
+        setTimeout(() => setShowSharePopup(true), 1000);
     }, [loadConfettiLib]);
 
     // Talent Protocol Builder Score
@@ -198,6 +200,9 @@ export function BMInterface() {
     const pressDown = () => setIsPressed(true);
     const pressUp = () => setIsPressed(false);
 
+    // Share popup state
+    const [showSharePopup, setShowSharePopup] = useState(false);
+
     return (
         <main className="app-main min-h-screen bg-black flex flex-col items-center justify-center p-6" style={{ position: 'relative', zIndex: 1 }}>
             {isConnected && address && (
@@ -295,6 +300,146 @@ export function BMInterface() {
                     </div>
                 </div>
             </div>
+
+            {/* Share Popup Modal */}
+            {showSharePopup && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '20px'
+                }}>
+                    <div style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '2px solid #0052FF',
+                        borderRadius: '15px',
+                        padding: '30px',
+                        maxWidth: '400px',
+                        width: '100%',
+                        textAlign: 'center',
+                        boxShadow: '0 8px 32px rgba(0, 82, 255, 0.3)',
+                        position: 'relative'
+                    }}>
+                        {/* Close X button */}
+                        <button
+                            onClick={() => setShowSharePopup(false)}
+                            style={{
+                                position: 'absolute',
+                                top: '15px',
+                                right: '15px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#ffffff',
+                                fontSize: '24px',
+                                cursor: 'pointer',
+                                width: '30px',
+                                height: '30px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '50%',
+                                transition: 'background-color 0.2s ease'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            ×
+                        </button>
+                        <h2 style={{
+                            color: '#ffffff',
+                            fontSize: '24px',
+                            fontWeight: 'bold',
+                            margin: '0 0 20px 0',
+                            textShadow: '0 0 10px #0052FF',
+                            textAlign: 'center'
+                        }}>
+                            Share your BM
+                        </h2>
+                        
+                        <p style={{
+                            color: '#ffffff',
+                            fontSize: '16px',
+                            margin: '0 0 25px 0',
+                            lineHeight: '1.4'
+                        }}>
+                            Share your BM while you wait for your next BM!
+                        </p>
+
+                        <div style={{ display: 'flex', justifyContent: 'center', margin: '0 0 25px 0' }}>
+                            <img 
+                                src="/twitter_animation.gif" 
+                                alt="BM Animation" 
+                                style={{
+                                    width: '200px',
+                                    height: 'auto',
+                                    borderRadius: '10px'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{
+                            display: 'flex',
+                            gap: '15px',
+                            justifyContent: 'center'
+                        }}>
+                            <button
+                                onClick={() => {
+                                    const tweetText = "Have you said your daily BM on @base yet?\n\nDon't forget to Tap to GM 👇👇 https://bmdaily.netlify.app/";
+                                    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+                                    window.open(twitterUrl, '_blank');
+                                }}
+                                style={{
+                                    backgroundColor: '#0052FF',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '12px 24px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 12px rgba(0, 82, 255, 0.3)',
+                                    transition: 'transform 0.2s ease'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                                Share on X
+                            </button>
+                            
+                            <button
+                                onClick={() => {
+                                    const farcasterText = "Have you said your daily BM on @base yet?\n\nDon't forget to Tap to GM 👇👇 https://bmdaily.netlify.app/";
+                                    const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(farcasterText)}`;
+                                    window.open(farcasterUrl, '_blank');
+                                }}
+                                style={{
+                                    backgroundColor: '#7966bb',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '12px 24px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 12px rgba(121, 102, 187, 0.3)',
+                                    transition: 'transform 0.2s ease'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                                Share on Farcaster
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
