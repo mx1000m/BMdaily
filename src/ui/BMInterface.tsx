@@ -66,8 +66,9 @@ export function BMInterface() {
                 if (!isMini) return;
                 const viewer = await mod.sdk.getViewer?.();
                 const fid = viewer?.fid;
-                if (!fid) return;
-                const resp = await fetch(`/.netlify/functions/farcaster-profile?fid=${fid}`);
+                const query = fid ? `fid=${fid}` : (address ? `address=${address}` : '');
+                if (!query) return;
+                const resp = await fetch(`/.netlify/functions/farcaster-profile?${query}`);
                 if (!resp.ok) return;
                 const data = await resp.json();
                 setFcName(data?.name || data?.username || null);
