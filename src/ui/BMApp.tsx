@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { base } from 'viem/chains';
@@ -13,6 +13,23 @@ export function BMApp() {
         transports: { [base.id]: http(import.meta.env.VITE_RPC_URL) },
         connectors: [injected()],
     }), []);
+
+    // Notify Farcaster Mini App shell that the app is ready to display
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                // Dynamically import via CDN to avoid adding a new npm dep
+                const mod = await import('https://esm.sh/@farcaster/miniapp-sdk');
+                if (!cancelled && mod?.sdk?.actions?.ready) {
+                    await mod.sdk.actions.ready();
+                }
+            } catch (_) {
+                // Ignore if not running inside a Farcaster Mini App context
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
 
     return (
         <WagmiProvider config={config}>
