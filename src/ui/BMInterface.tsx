@@ -391,7 +391,7 @@ export function BMInterface() {
                         }}>
                             <button
                                 onClick={() => {
-                                    const tweetText = "Have you said your daily BM on @base yet?\n\nDon't forget to Tap to GM 👇👇 https://bmdaily.netlify.app/";
+                                    const tweetText = "Have you said your daily BM on @base yet?\n\nDon't forget to Tap to BM 👇👇 https://bmdaily.netlify.app/";
                                     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
                                     window.open(twitterUrl, '_blank');
                                 }}
@@ -415,8 +415,8 @@ export function BMInterface() {
                             
                             <button
                                 onClick={() => {
-                                    const farcasterText = "Have you said your daily BM on @base yet?\n\nDon't forget to Tap to GM 👇👇 https://bmdaily.netlify.app/";
-                                    const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(farcasterText)}`;
+                                    const farcasterText = "Have you said your daily BM on @base.base.eth yet?\n\nDon't forget to Tap to BM 👇👇 https://bmdaily.netlify.app/";
+                                    const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(farcasterText)}&channelKey=base`;
                                     window.open(farcasterUrl, '_blank');
                                 }}
                                 style={{
