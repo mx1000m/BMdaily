@@ -20,7 +20,7 @@ export function BMApp() {
         (async () => {
             try {
                 // Dynamically import via CDN to avoid adding a new npm dep
-                const mod = await import('https://esm.sh/@farcaster/miniapp-sdk');
+                const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
                 if (!cancelled && mod?.sdk?.actions?.ready) {
                     await mod.sdk.actions.ready();
                 }
