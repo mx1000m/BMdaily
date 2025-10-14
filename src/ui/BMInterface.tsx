@@ -17,6 +17,8 @@ export function BMInterface() {
     const dayMs = 24 * 60 * 60 * 1000;
 
     const { address } = useAccount();
+    const [fcName, setFcName] = useState<string | null>(null);
+    const [fcPfp, setFcPfp] = useState<string | null>(null);
 
     // Mobile-only dynamic width for identity card (grow to keep name in one line)
     const idWrapRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +56,25 @@ export function BMInterface() {
             window.removeEventListener('resize', adjustIdentityWidth);
         };
     }, [address, adjustIdentityWidth]);
+
+    // Fetch Farcaster profile if running in Mini App and we don't have basename/ens visual
+    useEffect(() => {
+        (async () => {
+            try {
+                const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
+                const isMini = await mod.sdk.isInMiniApp();
+                if (!isMini) return;
+                const viewer = await mod.sdk.getViewer?.();
+                const fid = viewer?.fid;
+                if (!fid) return;
+                const resp = await fetch(`/.netlify/functions/farcaster-profile?fid=${fid}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                setFcName(data?.name || data?.username || null);
+                setFcPfp(data?.pfp || null);
+            } catch {}
+        })();
+    }, []);
 
     // Confetti loader (lazy load once)
     const confettiLoadedRef = useRef(false);
@@ -238,8 +259,8 @@ export function BMInterface() {
             {isConnected && address && (
                 <div ref={idWrapRef} className="identity-card-mobile fix-top" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', width: mobileIdWidth ? `${mobileIdWidth}px` : undefined, transition: 'width 150ms ease' }}>
                     <Identity address={address as `0x${string}`} chain={base} className="text-white">
-                        <Avatar />
-                        <Name />
+                        {fcPfp ? <img src={fcPfp} alt="pfp" style={{ width: 48, height: 48, borderRadius: '50%' }} /> : <Avatar />}
+                        {fcName ? <span data-testid="name" style={{ fontWeight: 700 }}>{fcName}</span> : <Name />}
                         <Address />
                     </Identity>
                     {/* Extension block visually attached under the identity card */}
