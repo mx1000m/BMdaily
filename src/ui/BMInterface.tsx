@@ -190,6 +190,13 @@ export function BMInterface() {
         }
     }, [connectAsync]);
 
+    // If running inside Farcaster, auto-connect the integrated wallet on load
+    useEffect(() => {
+        if (!isConnected) {
+            void connectFarcasterWallet();
+        }
+    }, [isConnected, connectFarcasterWallet]);
+
     const sendBm = useCallback(async () => {
         if (!isConnected || isSending) return;
         try {
