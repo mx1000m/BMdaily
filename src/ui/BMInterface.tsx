@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Wallet, ConnectWallet } from '@coinbase/onchainkit/wallet';
-import { useAccount, useWriteContract, useChainId, useSwitchChain, useReadContract } from 'wagmi';
+import { useAccount, useWriteContract, useChainId, useSwitchChain, useReadContract, useConnect } from 'wagmi';
 import { base } from 'viem/chains';
 import { bmContractAddress, bmAbi } from '../calls/bm';
 import baseLogo from '../../Base_Logo.png';
@@ -8,6 +8,7 @@ import { Identity, Avatar, Name, Address } from '@coinbase/onchainkit/identity';
 
 export function BMInterface() {
     const { isConnected } = useAccount();
+    const { connectAsync } = useConnect();
     const { writeContractAsync } = useWriteContract();
     const chainId = useChainId();
     const { switchChainAsync } = useSwitchChain();
@@ -171,6 +172,24 @@ export function BMInterface() {
         anyBtn?.click();
     }, []);
 
+    const connectFarcasterWallet = useCallback(async () => {
+        try {
+            const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
+            const isMini = await mod.sdk.isInMiniApp();
+            if (!isMini) return false;
+            const provider = await mod.sdk.wallet.getEthereumProvider();
+            if (!provider) return false;
+            (window as any).ethereum = provider; // ensure injected connector sees it
+            // request accounts and connect via wagmi injected connector
+            await provider.request?.({ method: 'eth_requestAccounts' });
+            const { injected } = await import('wagmi/connectors');
+            await connectAsync({ connector: injected() });
+            return true;
+        } catch {
+            return false;
+        }
+    }, [connectAsync]);
+
     const sendBm = useCallback(async () => {
         if (!isConnected || isSending) return;
         try {
@@ -190,11 +209,15 @@ export function BMInterface() {
         }
     }, [isConnected, isSending, writeContractAsync, valueWei, chainId, switchChainAsync, fireConfetti, adjustIdentityWidth]);
 
-    const handleTap = useCallback(() => {
-        if (!isConnected) { openWalletModal(); return; }
+    const handleTap = useCallback(async () => {
+        if (!isConnected) {
+            const connected = await connectFarcasterWallet();
+            if (!connected) { openWalletModal(); }
+            return;
+        }
         if (remainingMs > 0) return;
         void sendBm();
-    }, [isConnected, remainingMs, sendBm, openWalletModal]);
+    }, [isConnected, remainingMs, sendBm, openWalletModal, connectFarcasterWallet]);
 
     const [isPressed, setIsPressed] = useState(false);
     const pressDown = () => setIsPressed(true);
