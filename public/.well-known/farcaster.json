@@ -28,11 +28,9 @@
   "ogImageUrl": "https://bmdaily.netlify.app/og-image.png",
   "imageUrl": "https://bmdaily.netlify.app/og-image.png",
   "tags": [
-    "social",
-    "community",
-    "transaction",
     "bm",
-    "basedmorning"
+    "bmdaily",
+    "daily"
   ],
   "noindex": false
 }
