@@ -5,7 +5,7 @@
     "signature": "TFOBZehMRUKEb34hOAg5xk+BODiu8TXOB3lu1q6V8INXfS9wl4AzGu0c6wSB1AWPxRmWUV7gKBx9cM/nNYojwBw="
   },
   "baseBuilder": {
-    "allowedAddresses": []
+    "allowedAddresses": ["0x1BaEB484a4Ad15720450378f83EBfD52D6a61ca4"]
   },
   "miniapp": {
     "version": "1",
