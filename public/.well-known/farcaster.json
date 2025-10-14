@@ -14,25 +14,25 @@
     "iconUrl": "https://bmdaily.netlify.app/icon.png",
     "splashImageUrl": "https://bmdaily.netlify.app/splash.png",
     "splashBackgroundColor": "#0052ff",
-    "webhookUrl": "https://bmdaily.netlify.app/api/webhook"
-  },
-  "subtitle": "Tap to BM on Base.",
-  "description": "Send a GM onchain. Boost your daily TX count and hit a new contract. All for less than a penny within a click.",
-  "tagline": "Tap to BM on Base!",
-  "buttonTitle": "Tap to BM",
-  "primaryCategory": "productivity",
-  "heroImageUrl": "https://bmdaily.netlify.app/hero.png",
-  "screenshotUrls": [],
-  "ogTitle": "BM Daily",
-  "ogDescription": "Send a GM onchain. Boost your daily TX count.",
-  "ogImageUrl": "https://bmdaily.netlify.app/og-image.png",
-  "imageUrl": "https://bmdaily.netlify.app/og-image.png",
-  "tags": [
-    "bm",
-    "bmdaily",
-    "daily"
-  ],
-  "noindex": false
+    "webhookUrl": "https://bmdaily.netlify.app/api/webhook",
+    "subtitle": "Tap to BM on Base.",
+    "description": "Send a GM onchain. Boost your daily TX count and hit a new contract. All for less than a penny within a click.",
+    "tagline": "Tap to BM on Base!",
+    "buttonTitle": "Tap to BM",
+    "primaryCategory": "productivity",
+    "heroImageUrl": "https://bmdaily.netlify.app/hero.png",
+    "screenshotUrls": [],
+    "ogTitle": "BM Daily",
+    "ogDescription": "Send a GM onchain. Boost your daily TX count.",
+    "ogImageUrl": "https://bmdaily.netlify.app/og-image.png",
+    "imageUrl": "https://bmdaily.netlify.app/og-image.png",
+    "tags": [
+      "bm",
+      "bmdaily",
+      "daily"
+    ],
+    "noindex": false
+  }
 }
 
 
