@@ -35,7 +35,7 @@ export function BMApp() {
         <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
                 <OnchainKitProvider 
-                    apiKey="YpFjb8rh9RuzhmGWxT9kPZ1vVfRaAXym"
+                    apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY}
                     chain={base}
                     config={{
                         appearance: {

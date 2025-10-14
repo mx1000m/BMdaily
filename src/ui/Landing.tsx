@@ -18,10 +18,10 @@ export function Landing({ onStartNewGame }: Props) {
 				<div className="wallet-row">
 					{isConnected ? (
 						<div className="wallet-address">
-							<SafeIdentityCard apiKey={import.meta.env.VITE_ONCHAINKIT_CLIENT_KEY || 'YpFjb8rh9RuzhmGWxT9kPZ1vVfRaAXym'} address={(address || '0x') as `0x${string}`} />
+                            <SafeIdentityCard apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY} address={(address || '0x') as `0x${string}`} />
 						</div>
 					) : (
-						<SafeWalletShell apiKey={import.meta.env.VITE_ONCHAINKIT_CLIENT_KEY || 'YpFjb8rh9RuzhmGWxT9kPZ1vVfRaAXym'} />
+                        <SafeWalletShell apiKey={import.meta.env.VITE_ONCHAINKIT_API_KEY} />
 					)}
 				</div>
 				<div className="actions">
