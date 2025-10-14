@@ -87,7 +87,7 @@ export function BMInterface() {
             if (!address) { setBuilderScore(null); return; }
             try {
                 setBuilderScoreLoading(true);
-                const apiKey = (import.meta.env.VITE_TALENT_API_KEY as string) || '0cb4782fab7f9e43a4eb49973a376cdd18fa37192c68c720ee7e2a18fc29';
+                const apiKey = (import.meta.env.VITE_TALENT_API_KEY as string);
                 const headers = { 'X-API-KEY': apiKey, 'Accept': 'application/json' } as Record<string, string>;
                 const url = `https://api.talentprotocol.com/score?id=${address}&account_source=wallet&scorer_slug=builder_score`;
                 const res = await fetch(url, { headers });
