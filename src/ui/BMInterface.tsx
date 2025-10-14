@@ -262,7 +262,7 @@ export function BMInterface() {
                     <Identity address={address as `0x${string}`} chain={base} className="text-white">
                         {fcPfp ? <img src={fcPfp} alt="pfp" style={{ width: 48, height: 48, borderRadius: '50%' }} /> : <Avatar />}
                         {fcName ? <span data-testid="name" style={{ fontWeight: 700 }}>{fcName}</span> : <Name />}
-                        <Address />
+                        {!fcName && <Address />}
                     </Identity>
                     {/* Extension block visually attached under the identity card */}
                     <div
