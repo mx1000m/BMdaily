@@ -64,8 +64,8 @@ export function BMInterface() {
                 const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
                 const isMini = await mod.sdk.isInMiniApp();
                 if (!isMini) return;
-                const viewer = (await mod.sdk.getViewer?.()) || (await mod.sdk.getContext?.());
-                const fid = viewer?.fid || viewer?.viewer?.fid;
+                const viewer = await mod.sdk.getViewer?.();
+                const fid = viewer?.fid;
                 const query = fid ? `fid=${fid}` : (address ? `address=${address}` : '');
                 if (!query) return;
                 const resp = await fetch(`/.netlify/functions/farcaster-profile?${query}`);
@@ -261,17 +261,8 @@ export function BMInterface() {
                 <div ref={idWrapRef} className="identity-card-mobile fix-top" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', width: mobileIdWidth ? `${mobileIdWidth}px` : undefined, transition: 'width 150ms ease' }}>
                     <Identity address={address as `0x${string}`} chain={base} className="text-white">
                         {fcPfp ? <img src={fcPfp} alt="pfp" style={{ width: 48, height: 48, borderRadius: '50%' }} /> : <Avatar />}
-                        {fcName ? (
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span data-testid="name" style={{ fontWeight: 700 }}>{fcName}</span>
-                                <span style={{ opacity: 0.8, fontSize: '12px' }}><Address /></span>
-                            </div>
-                        ) : (
-                            <>
-                                <Name />
-                                <Address />
-                            </>
-                        )}
+                        {fcName ? <span data-testid="name" style={{ fontWeight: 700 }}>{fcName}</span> : <Name />}
+                        {!fcName && <Address />}
                     </Identity>
                     {/* Extension block visually attached under the identity card */}
                     <div
