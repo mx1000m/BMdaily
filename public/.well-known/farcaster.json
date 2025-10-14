@@ -25,7 +25,8 @@
   "screenshotUrls": [],
   "ogTitle": "BM Daily",
   "ogDescription": "Send a GM onchain. Boost your daily TX count.",
-  "ogImageUrl": "https://bmdaily.netlify.app/image.png",
+  "ogImageUrl": "https://bmdaily.netlify.app/og-image.png",
+  "imageUrl": "https://bmdaily.netlify.app/og-image.png",
   "tags": [
     "social",
     "community",
