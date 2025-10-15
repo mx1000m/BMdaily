@@ -57,13 +57,16 @@ export function BMInterface() {
         };
     }, [address, adjustIdentityWidth]);
 
-    // Fetch Farcaster profile if running in Mini App and we don't have basename/ens visual
+    // Prompt to add Mini App (enables notifications flow) and fetch Farcaster profile if present
     useEffect(() => {
         (async () => {
             try {
                 const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
                 const isMini = await mod.sdk.isInMiniApp();
-                if (!isMini) return;
+                if (isMini) {
+                    // Gentle prompt to add mini app so user can enable notifications
+                    try { await mod.sdk.actions.addMiniApp?.(); } catch {}
+                }
                 const viewer = await mod.sdk.getViewer?.();
                 const fid = viewer?.fid;
                 if (!fid) return;
@@ -178,6 +181,38 @@ export function BMInterface() {
         return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
     }, [remainingMs]);
 
+    // When cooldown ends, schedule a server-side notification (if user enabled it)
+    useEffect(() => {
+        (async () => {
+            try {
+                if (!address || typeof lastBmTs !== 'bigint') return;
+                const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
+                const isMini = await mod.sdk.isInMiniApp();
+                if (!isMini) return;
+                const viewer = await mod.sdk.getViewer?.().catch(() => undefined);
+                const fid = viewer?.fid;
+                if (!fid) return;
+                const last = Number(lastBmTs) * 1000;
+                const nextAt = last + dayMs;
+                const delay = nextAt - Date.now();
+                if (delay <= 0) return;
+                const timer = setTimeout(() => {
+                    fetch('/.netlify/functions/send-notification', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fid,
+                            title: "Your next BM's ready.☕",
+                            body: 'Tap to BM!',
+                            targetUrl: window.location.origin,
+                        })
+                    }).catch(() => {});
+                }, delay + 500);
+                return () => clearTimeout(timer);
+            } catch {}
+        })();
+    }, [address, lastBmTs]);
+
     const openWalletModal = useCallback(() => {
         const selectors = [
             '[data-testid="connect-wallet-button"]',
@@ -231,6 +266,23 @@ export function BMInterface() {
             void fireConfetti();
             // Re-adjust width in case the header reflows after name/avatar updates
             setTimeout(adjustIdentityWidth, 100);
+            // Schedule server-side notification if we have a fid
+            try {
+                const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
+                const isMini = await mod.sdk.isInMiniApp();
+                if (isMini) {
+                    const viewer = await mod.sdk.getViewer?.().catch(() => undefined);
+                    const fid = viewer?.fid;
+                    if (fid) {
+                        await fetch('/.netlify/functions/schedule-save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fid, nextAt: Date.now() + dayMs }),
+                        });
+                        // also ensure the fid is in index via webhook path is already handled on enable
+                    }
+                }
+            } catch {}
         } catch (_) {
         } finally {
             setIsSending(false);
