@@ -9,7 +9,7 @@ export async function handler(event) {
     if (!req?.fid || !req?.title || !req?.body || !req?.targetUrl) {
       return { statusCode: 400, body: 'Missing required fields' };
     }
-    const store = getStore({ name: 'bm-notifications' });
+    const store = getStore({ name: 'bm-notifications', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_BLOBS_TOKEN });
     const saved = await store.getJSON(`fid:${req.fid}`);
     if (!saved?.url || !saved?.token) {
       return { statusCode: 404, body: 'No token for fid' };
@@ -32,5 +32,6 @@ export async function handler(event) {
     return { statusCode: 500, body: JSON.stringify({ ok: false, error: String(e) }) };
   }
 }
+
 
 

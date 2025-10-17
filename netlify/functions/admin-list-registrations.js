@@ -12,12 +12,12 @@ export const handler = async (event) => {
 	}
 
 	try {
-		const store = getStore({ name: 'notifications' });
-		const tokensList = await store.list({ prefix: 'token-' });
+		const store = getStore({ name: 'bm-notifications', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_BLOBS_TOKEN });
+		const indexKey = 'due:index';
+		const index = (await store.getJSON(indexKey)) || { fids: [] };
 		const items = [];
-		for (const { key } of tokensList.blobs) {
-			const fid = key.replace('token-', '');
-			const details = await store.getJSON(key);
+		for (const fid of index.fids) {
+			const details = await store.getJSON(`fid:${fid}`);
 			if (details && details.token && details.url) {
 				let host;
 				try { host = new URL(details.url).host; } catch { host = undefined; }

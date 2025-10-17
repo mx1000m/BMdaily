@@ -9,5 +9,3 @@
 
 # Note: schedule is defined inside code via `schedule('*/5 * * * *', handler)`
 
-[[plugins]]
-  package = "@netlify/plugin-blobs"

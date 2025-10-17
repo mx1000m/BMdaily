@@ -4,7 +4,7 @@ import { getStore } from '@netlify/blobs';
 
 export async function handler() {
   try {
-    const store = getStore({ name: 'bm-notifications' });
+    const store = getStore({ name: 'bm-notifications', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_BLOBS_TOKEN });
     // Netlify Blobs does not expose list via SDK on free tier; keep a rolling index of fids
     // For simplicity, store a set of keys under a single index document
     const indexKey = 'due:index';
@@ -45,5 +45,7 @@ export async function handler() {
     return { statusCode: 500, body: JSON.stringify({ ok: false, error: String(e) }) };
   }
 }
+
+
 
 
