@@ -1,10 +1,11 @@
 [build]
   publish = "dist"
   command = "npm run build"
+  functions = "netlify/functions"
 
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
+#[functions]
+#  directory = "netlify/functions"  # moved to [build.functions] for TOML compatibility
+#  node_bundler = "esbuild"         # optional; Netlify defaults to esbuild
 
 [[functions]]
   name = "schedule-cron"
