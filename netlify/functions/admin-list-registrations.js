@@ -31,7 +31,7 @@ export const handler = async (event) => {
 		};
 	} catch (err) {
 		console.error('admin-list-registrations error', err);
-		return { statusCode: 500, body: 'Internal Server Error' };
+		return { statusCode: 500, body: `Internal Server Error: ${err && err.message ? err.message : 'unknown'}` };
 	}
 };
 
