@@ -18,7 +18,11 @@ export const handler = async (event) => {
 	const targetUrl = body.targetUrl || process.env.VITE_BASE_URL || 'https://bmdaily.netlify.app';
 
 	try {
-		const store = getStore({ name: 'bm-notifications' });
+		const store = getStore({
+			name: 'bm-notifications',
+			siteID: process.env.NETLIFY_SITE_ID || process.env.SITE_ID,
+			token: process.env.NETLIFY_BLOBS_TOKEN || process.env.BLOBS_TOKEN,
+		});
 		const index = (await store.getJSON('due:index')) || { fids: [] };
 		let attempted = 0;
 		let sent = 0;
