@@ -1,4 +1,4 @@
-import { getStore } from '@netlify/blobs';
+import { getStorage } from './simple-storage.js';
 
 export const handler = async (event) => {
 	if (event.httpMethod !== 'GET') {
@@ -12,7 +12,7 @@ export const handler = async (event) => {
 	}
 
 	try {
-		const store = getStore({ name: 'bm-notifications' });
+		const store = getStorage();
 		const indexKey = 'due:index';
 		const index = (await store.getJSON(indexKey)) || { fids: [] };
 		const items = [];

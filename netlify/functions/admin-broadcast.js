@@ -1,4 +1,4 @@
-import { getStore } from '@netlify/blobs';
+import { getStorage } from './simple-storage.js';
 
 export const handler = async (event) => {
 	if (event.httpMethod !== 'POST') {
@@ -18,7 +18,7 @@ export const handler = async (event) => {
 	const targetUrl = body.targetUrl || process.env.VITE_BASE_URL || 'https://bmdaily.netlify.app';
 
 	try {
-		const store = getStore({ name: 'bm-notifications' });
+		const store = getStorage();
 		const index = (await store.getJSON('due:index')) || { fids: [] };
 		let attempted = 0;
 		let sent = 0;
