@@ -66,6 +66,29 @@ export function BMInterface() {
                 if (isMini) {
                     // Gentle prompt to add mini app so user can enable notifications
                     try { await mod.sdk.actions.addMiniApp?.(); } catch {}
+                    
+                    // Request notification permissions and register with our webhook
+                    try {
+                        const viewer = await mod.sdk.getViewer?.();
+                        const fid = viewer?.fid;
+                        if (fid) {
+                            // Register for notifications by calling our webhook
+                            await fetch('/.netlify/functions/notifications-webhook', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    event: 'miniapp_added',
+                                    fid: fid,
+                                    notificationDetails: {
+                                        url: 'https://notifications.farcaster.xyz/v1/notifications',
+                                        token: `fid-${fid}-${Date.now()}` // Placeholder token
+                                    }
+                                })
+                            });
+                        }
+                    } catch (e) {
+                        console.log('Notification registration failed:', e);
+                    }
                 }
                 const viewer = await mod.sdk.getViewer?.();
                 const fid = viewer?.fid;
@@ -306,6 +329,25 @@ export function BMInterface() {
     // Share popup state
     const [showSharePopup, setShowSharePopup] = useState(false);
 
+    // Notification prompt state
+    const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+    const [isInMiniApp, setIsInMiniApp] = useState(false);
+
+    // Check if user is in Mini App and show notification prompt
+    useEffect(() => {
+        (async () => {
+            try {
+                const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
+                const isMini = await mod.sdk.isInMiniApp();
+                setIsInMiniApp(isMini);
+                if (isMini) {
+                    // Show notification prompt after a short delay
+                    setTimeout(() => setShowNotificationPrompt(true), 2000);
+                }
+            } catch {}
+        })();
+    }, []);
+
     return (
         <main className="app-main min-h-screen bg-black flex flex-col items-center justify-center p-6" style={{ position: 'relative', zIndex: 1 }}>
             {isConnected && address && (
@@ -344,6 +386,71 @@ export function BMInterface() {
                             <img src="/LogoBM.png" alt="BM" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
                             <span style={{ color: '#ffffff', fontSize: '12px' }}>Your BM count: <strong>{(typeof userBmCount === 'bigint' ? Number(userBmCount) : 0) + userBmCountDelta}</strong></span>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Notification Prompt for Mini App users */}
+            {isInMiniApp && showNotificationPrompt && (
+                <div style={{
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    background: 'rgba(0, 0, 0, 0.95)',
+                    border: '2px solid #0052FF',
+                    borderRadius: '15px',
+                    padding: '20px',
+                    maxWidth: '90%',
+                    width: '350px',
+                    zIndex: 1000,
+                    textAlign: 'center',
+                    boxShadow: '0 8px 32px rgba(0, 82, 255, 0.3)'
+                }}>
+                    <h3 style={{ color: '#ffffff', margin: '0 0 15px 0', fontSize: '18px', fontWeight: 'bold' }}>
+                        🔔 Enable Notifications
+                    </h3>
+                    <p style={{ color: '#cccccc', margin: '0 0 20px 0', fontSize: '14px', lineHeight: '1.4' }}>
+                        Get notified when your next BM is ready! This will help you stay consistent with your daily BM routine.
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                        <button
+                            onClick={() => setShowNotificationPrompt(false)}
+                            style={{
+                                background: 'transparent',
+                                color: '#888888',
+                                border: '1px solid #444444',
+                                borderRadius: '8px',
+                                padding: '10px 20px',
+                                fontSize: '14px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Maybe Later
+                        </button>
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
+                                    await mod.sdk.actions.addMiniApp?.();
+                                    setShowNotificationPrompt(false);
+                                } catch (e) {
+                                    console.log('Failed to add mini app:', e);
+                                }
+                            }}
+                            style={{
+                                background: '#0052FF',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '10px 20px',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Enable Notifications
+                        </button>
                     </div>
                 </div>
             )}
