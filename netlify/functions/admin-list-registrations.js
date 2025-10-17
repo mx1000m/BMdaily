@@ -12,7 +12,7 @@ export const handler = async (event) => {
 	}
 
 	try {
-		const store = getStore({ name: 'bm-notifications', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_BLOBS_TOKEN });
+		const store = getStore({ name: 'bm-notifications' });
 		const indexKey = 'due:index';
 		const index = (await store.getJSON(indexKey)) || { fids: [] };
 		const items = [];
