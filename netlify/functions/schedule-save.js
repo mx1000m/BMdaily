@@ -13,7 +13,13 @@ export async function handler(event) {
       return { statusCode: 400, body: 'Missing fid/nextAt' };
     }
     const store = getStorage();
-    await store.setJSON(`due:${fid}`, { fid, nextAt });
+    // Store the first notification time and mark it as not sent yet
+    await store.setJSON(`due:${fid}`, { 
+      fid, 
+      nextAt, 
+      firstNotificationSent: false,
+      reminderNotificationAt: nextAt + (24 * 60 * 60 * 1000) // 24 hours after first notification
+    });
     return { statusCode: 200, body: JSON.stringify({ ok: true }) };
   } catch (e) {
     return { statusCode: 500, body: JSON.stringify({ ok: false, error: String(e) }) };

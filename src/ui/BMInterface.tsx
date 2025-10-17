@@ -66,20 +66,6 @@ export function BMInterface() {
                 if (isMini) {
                     // Gentle prompt to add mini app so user can enable notifications
                     try { await mod.sdk.actions.addMiniApp?.(); } catch {}
-                    
-                    // Register for notifications - Base/Farcaster will call our webhook automatically
-                    // when user enables notifications, so we just need to ensure the mini app is added
-                    try {
-                        const viewer = await mod.sdk.getViewer?.();
-                        const fid = viewer?.fid;
-                        if (fid) {
-                            console.log('Mini App added for FID:', fid);
-                            // The webhook will be called automatically by Base/Farcaster
-                            // when the user enables notifications in their settings
-                        }
-                    } catch (e) {
-                        console.log('Mini App registration failed:', e);
-                    }
                 }
                 const viewer = await mod.sdk.getViewer?.();
                 const fid = viewer?.fid;
@@ -320,20 +306,6 @@ export function BMInterface() {
     // Share popup state
     const [showSharePopup, setShowSharePopup] = useState(false);
 
-    // Check if user is in Mini App
-    const [isInMiniApp, setIsInMiniApp] = useState(false);
-
-    // Check if user is in Mini App
-    useEffect(() => {
-        (async () => {
-            try {
-                const mod = await import(/* @vite-ignore */ 'https://esm.sh/@farcaster/miniapp-sdk');
-                const isMini = await mod.sdk.isInMiniApp();
-                setIsInMiniApp(isMini);
-            } catch {}
-        })();
-    }, []);
-
     return (
         <main className="app-main min-h-screen bg-black flex flex-col items-center justify-center p-6" style={{ position: 'relative', zIndex: 1 }}>
             {isConnected && address && (
@@ -375,7 +347,6 @@ export function BMInterface() {
                     </div>
                 </div>
             )}
-
             
             <img src={baseLogo} alt="Base logo" style={{ width: '219px', height: 'auto', marginTop: '0px', marginBottom: '24px' }} className="mobile-push-25 logo-mobile-offset logo-mobile-tight" />
             <div className="w-full max-w-md flex flex-col items-center gap-6 mobile-push-8">

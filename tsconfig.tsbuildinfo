@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/vite-env.d.ts","./src/calls/bm.ts","./src/ui/app.tsx","./src/ui/bmapp.tsx","./src/ui/bminterface.tsx","./src/ui/fallingbackground.tsx","./src/ui/landing.tsx","./src/ui/safeonchainkit.tsx","./src/ui/safewalletmodal.tsx","./src/ui/walletconnect.tsx","./src/vt100/tetris.tsx"],"version":"5.8.3"}
