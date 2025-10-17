@@ -20,6 +20,12 @@ export const handler = async (event) => {
 	try {
 		const store = getStorage();
 		const index = (await store.getJSON('due:index')) || { fids: [] };
+		
+		// Also check for test registrations
+		const testFid = await store.getJSON('fid:323074');
+		if (testFid && testFid.token && testFid.url && !index.fids.includes(323074)) {
+			index.fids.push(323074);
+		}
 		let attempted = 0;
 		let sent = 0;
 		for (const fid of index.fids) {
