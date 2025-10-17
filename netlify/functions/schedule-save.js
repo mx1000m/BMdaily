@@ -1,4 +1,4 @@
-import { getStore } from '@netlify/blobs';
+import { getStorage } from './simple-storage.js';
 
 // Saves nextAt for a fid so the cron can pick it up later
 export async function handler(event) {
@@ -12,11 +12,7 @@ export async function handler(event) {
     if (typeof fid !== 'number' || typeof nextAt !== 'number') {
       return { statusCode: 400, body: 'Missing fid/nextAt' };
     }
-    const store = getStore({
-      name: 'bm-notifications',
-      siteID: process.env.NETLIFY_SITE_ID || process.env.SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN || process.env.BLOBS_TOKEN,
-    });
+    const store = getStorage();
     await store.setJSON(`due:${fid}`, { fid, nextAt });
     return { statusCode: 200, body: JSON.stringify({ ok: true }) };
   } catch (e) {

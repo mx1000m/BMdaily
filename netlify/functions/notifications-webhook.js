@@ -1,4 +1,4 @@
-import { getStore } from '@netlify/blobs';
+import { getStorage } from './simple-storage.js';
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
@@ -8,11 +8,7 @@ export async function handler(event) {
     const body = event.body ? JSON.parse(event.body) : {};
     const notificationDetails = body?.notificationDetails;
     const fid = body?.fid ?? body?.viewer?.fid ?? body?.user?.fid ?? body?.context?.viewer?.fid;
-    const store = getStore({
-      name: 'bm-notifications',
-      siteID: process.env.NETLIFY_SITE_ID || process.env.SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN || process.env.BLOBS_TOKEN,
-    });
+    const store = getStorage();
 
     if (!fid || typeof fid !== 'number') {
       return { statusCode: 200, body: JSON.stringify({ ok: true, saved: false }) };

@@ -1,14 +1,10 @@
 // Scheduled function: runs every 5 minutes
 // netlify.toml will define the schedule
-import { getStore } from '@netlify/blobs';
+import { getStorage } from './simple-storage.js';
 
 export async function handler() {
   try {
-    const store = getStore({
-      name: 'bm-notifications',
-      siteID: process.env.NETLIFY_SITE_ID || process.env.SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN || process.env.BLOBS_TOKEN,
-    });
+    const store = getStorage();
     // Netlify Blobs does not expose list via SDK on free tier; keep a rolling index of fids
     // For simplicity, store a set of keys under a single index document
     const indexKey = 'due:index';

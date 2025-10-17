@@ -1,4 +1,4 @@
-import { getStore } from '@netlify/blobs';
+import { getStorage } from './simple-storage.js';
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
@@ -9,7 +9,7 @@ export async function handler(event) {
     if (!req?.fid || !req?.title || !req?.body || !req?.targetUrl) {
       return { statusCode: 400, body: 'Missing required fields' };
     }
-    const store = getStore({ name: 'bm-notifications' });
+    const store = getStorage();
     const saved = await store.getJSON(`fid:${req.fid}`);
     if (!saved?.url || !saved?.token) {
       return { statusCode: 404, body: 'No token for fid' };
