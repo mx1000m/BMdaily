@@ -14,7 +14,7 @@
     "iconUrl": "https://bmdaily.netlify.app/icon.png",
     "splashImageUrl": "https://bmdaily.netlify.app/splash.png",
     "splashBackgroundColor": "#0052ff",
-    "webhookUrl": "https://bmdaily.netlify.app/.netlify/functions/notifications-webhook",
+    "webhookUrl": "https://api.neynar.com/f/app/9d6822fe-e3f5-498d-a632-8caff0fb7828/event",
     "subtitle": "Tap to BM on Base.",
     "description": "Send a GM onchain. Boost your daily TX count and hit a new contract. All for less than a penny within a click.",
     "tagline": "Tap to BM on Base!",
