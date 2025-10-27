@@ -52,14 +52,15 @@ export const handler = async (event: any) => {
     console.log(`Found ${events.length} BM events`);
 
     // Get existing leaderboard from Blobs
-    const store = getStore({ 
-      name: 'leaderboard',
-      siteID: process.env.NETLIFY_SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN
-    });
-    
     let existingCounts = new Map<string, number>();
+    
     try {
+      const store = getStore({ 
+        name: 'leaderboard',
+        siteID: process.env.NETLIFY_SITE_ID,
+        token: process.env.NETLIFY_BLOBS_TOKEN
+      });
+      
       const existing = await store.get('counts', { type: 'json' });
       if (existing && Array.isArray(existing)) {
         existing.forEach((entry: any) => {
@@ -67,7 +68,8 @@ export const handler = async (event: any) => {
         });
       }
     } catch (error) {
-      console.log('No existing leaderboard data found, starting fresh');
+      console.log('No existing leaderboard data found, starting fresh:', error);
+      // Continue without existing data
     }
     
     // Update counts with new events
@@ -86,8 +88,22 @@ export const handler = async (event: any) => {
       .sort((a, b) => b.count - a.count);
 
     // Store in Netlify Blobs
-    await store.set('counts', JSON.stringify(Array.from(existingCounts.entries()).map(([address, count]) => ({ address, count }))));
-    await store.set('lastUpdate', new Date().toISOString());
+    try {
+      const store = getStore({ 
+        name: 'leaderboard',
+        siteID: process.env.NETLIFY_SITE_ID,
+        token: process.env.NETLIFY_BLOBS_TOKEN
+      });
+      await store.set('counts', JSON.stringify(Array.from(existingCounts.entries()).map(([address, count]) => ({ address, count }))));
+      await store.set('lastUpdate', new Date().toISOString());
+    } catch (error) {
+      console.error('Error storing in Blobs:', error);
+      return {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Failed to store in Blobs', details: String(error) }),
+      };
+    }
 
     console.log(`Updated leaderboard with ${entries.length} users`);
 
