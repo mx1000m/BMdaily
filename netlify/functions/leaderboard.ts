@@ -26,21 +26,36 @@ export const handler = async (event: any) => {
       };
     }
 
-    // Fetch BM events from Basescan API
-    // Basescan doesn't require API key for reasonable usage
-    const apiUrl = `https://api.basescan.org/api?module=logs&action=getLogs&address=${bmContractAddress}&topic0=0x92c259cac325cc3ab274625712152620f8924d3dd0d2e8a8739859cdd609519c`;
+    // Fetch BM events using Etherscan-compatible API
+    // Using public RPC with eth_getLogs
+    const apiUrl = 'https://mainnet.base.org';
     
-    console.log('Fetching BM events from Basescan...');
-    const response = await fetch(apiUrl);
+    console.log('Fetching BM events from Base RPC...');
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_getLogs',
+        params: [{
+          address: bmContractAddress,
+          topics: ['0x92c259cac325cc3ab274625712152620f8924d3dd0d2e8a8739859cdd609519c'],
+          fromBlock: '0x2315c26', // Block 36776590 (contract deployment)
+          toBlock: 'latest'
+        }]
+      })
+    });
     
     if (!response.ok) {
-      throw new Error(`Basescan API error: ${response.status}`);
+      throw new Error(`RPC error: ${response.status}`);
     }
     
     const data = await response.json();
     
-    if (data.status !== '1' || !data.result) {
-      throw new Error(`Basescan API error: ${data.message || 'Unknown error'}`);
+    if (data.error) {
+      throw new Error(`RPC error: ${data.error.message || 'Unknown error'}`);
     }
 
     const events = Array.isArray(data.result) ? data.result : [];
