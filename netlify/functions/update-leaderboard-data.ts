@@ -1,6 +1,7 @@
-import { getStore } from '@netlify/blobs';
-
 const bmContractAddress = '0x47EAd660725c7821c7349DF42579dBE857c02715';
+
+// Global cache that survives between invocations
+let globalLeaderboardData: any = null;
 
 export const handler = async (event: any) => {
   console.log('Starting update-leaderboard-data function...');
@@ -77,14 +78,8 @@ export const handler = async (event: any) => {
       .map(([address, count]) => ({ address, count }))
       .sort((a, b) => b.count - a.count);
 
-    // Store in Netlify Blobs
-    const store = getStore({ 
-      name: 'leaderboard',
-      siteID: process.env.NETLIFY_SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN
-    });
-    await store.set('entries', JSON.stringify(entries));
-    await store.set('lastUpdate', new Date().toISOString());
+    // Store in global cache
+    globalLeaderboardData = entries;
 
     console.log(`Updated leaderboard with ${entries.length} users`);
 
@@ -94,7 +89,8 @@ export const handler = async (event: any) => {
       body: JSON.stringify({ 
         success: true,
         userCount: entries.length,
-        topUsers: entries.slice(0, 10)
+        topUsers: entries.slice(0, 10),
+        allEntries: entries
       }),
     };
   } catch (error) {

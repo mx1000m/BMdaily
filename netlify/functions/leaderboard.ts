@@ -1,5 +1,3 @@
-import { getStore } from '@netlify/blobs';
-
 interface LeaderboardEntry {
   address: string;
   count: number;
@@ -12,27 +10,15 @@ export const handler = async (event: any) => {
   }
 
   try {
-    // Get leaderboard from Netlify Blobs (persistent storage)
-    const store = getStore({ 
-      name: 'leaderboard',
-      siteID: process.env.NETLIFY_SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN
-    });
-    const data = await store.get('entries', { type: 'json' });
-    
-    if (data && Array.isArray(data)) {
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: data }),
-      };
-    }
-    
-    // Return empty if no data yet
+    // Fetch data from update function's output
+    // For now, return a message to manually trigger update
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entries: [] }),
+      body: JSON.stringify({ 
+        entries: [],
+        message: 'Please click the update button to fetch leaderboard data'
+      }),
     };
   } catch (error) {
     console.error('Leaderboard error:', error);
