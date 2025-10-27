@@ -18,7 +18,7 @@ export const handler = async (event: any) => {
     
     for (let i = 0; i < 30; i++) { // Max 30 batches (~30k blocks = ~13 days)
       try {
-        const blockNum = BigInt(37276590 + (i * batchSize));
+        const blockNum = BigInt(36776590 + (i * batchSize)); // Start from contract deployment
         
         const response = await fetch(alchemyUrl, {
           method: 'POST',
