@@ -4,43 +4,70 @@ const bmContractAddress = '0x47EAd660725c7821c7349DF42579dBE857c02715';
 
 export const handler = async (event: any) => {
   try {
-    // Fetch ALL transactions from contract (no block range limit with Basescan)
-    const apiUrl = `https://api.basescan.org/api?module=account&action=txlist&address=${bmContractAddress}&startblock=0&endblock=99999999&sort=asc`;
+    // Use Alchemy API to fetch all BM events using a pagination approach
+    const alchemyUrl = 'https://base-mainnet.g.alchemy.com/v2/pBWWRwxvrlovShZdNr9M_';
+    const allEvents: any[] = [];
     
-    console.log('Fetching all transactions from Basescan...');
-    const response = await fetch(apiUrl);
+    console.log('Fetching BM events from Alchemy in pages...');
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+    // Fetch in batches to avoid timeout
+    let currentBlock = 'latest';
+    const batchSize = 1000; // blocks per batch
+    
+    for (let i = 0; i < 30; i++) { // Max 30 batches (~30k blocks = ~13 days)
+      try {
+        const blockNum = BigInt(37276590 + (i * batchSize));
+        
+        const response = await fetch(alchemyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'eth_getLogs',
+            params: [{
+              address: bmContractAddress,
+              topics: ['0x92c259cac325cc3ab274625712152620f8924d3dd0d2e8a8739859cdd609519c'],
+              fromBlock: '0x' + blockNum.toString(16),
+              toBlock: '0x' + (blockNum + BigInt(batchSize)).toString(16)
+            }]
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error || !data.result) {
+          console.log(`Batch ${i} failed or no data`);
+          break;
+        }
+        
+        if (Array.isArray(data.result)) {
+          allEvents.push(...data.result);
+        }
+        
+        console.log(`Batch ${i + 1}: Found ${data.result?.length || 0} events`);
+        
+        // Small delay between batches
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.error(`Batch ${i} error:`, error);
+        break;
+      }
     }
     
-    const data = await response.json();
-    
-    console.log(`API Status: ${data.status}, Result length: ${data.result?.length || 0}`);
-    
-    if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: 'No data available yet',
-          status: data.status,
-          debug: data
-        }),
-      };
-    }
+    const data = { result: allEvents };
 
-    // Process transactions - filter only BM calls and aggregate by user
+    console.log(`Total events found: ${data.result.length}`);
+
+    // Process event logs - user address is in topic1
     const counts = new Map<string, number>();
     
-    for (const tx of data.result) {
-      // BM transactions have specific method signature in the 'input' field
-      // if input is just 0x (no parameters), it's a simple BM call
-      if (tx.input === '0x' || tx.input.startsWith('0x92c259')) {
-        const user = tx.from?.toLowerCase();
-        if (user) {
-          counts.set(user, (counts.get(user) || 0) + 1);
-        }
+    for (const event of data.result) {
+      if (event.topics && event.topics.length > 1) {
+        // Extract user address from topic1
+        const topic = event.topics[1];
+        const userAddress = '0x' + topic.slice(26);
+        counts.set(userAddress.toLowerCase(), (counts.get(userAddress.toLowerCase()) || 0) + 1);
       }
     }
 
