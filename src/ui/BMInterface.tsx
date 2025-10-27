@@ -24,6 +24,7 @@ export function BMInterface() {
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [leaderboardData, setLeaderboardData] = useState<Array<{ address: string; count: number; name?: string }>>([]);
     const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
+    const [isLeaderboardButtonPressed, setIsLeaderboardButtonPressed] = useState(false);
 
     // Mobile-only dynamic width for identity card (grow to keep name in one line)
     const idWrapRef = useRef<HTMLDivElement | null>(null);
@@ -338,6 +339,11 @@ export function BMInterface() {
             {/* Leaderboard Button */}
             <button
                 onClick={handleLeaderboardClick}
+                onMouseDown={() => setIsLeaderboardButtonPressed(true)}
+                onMouseUp={() => setIsLeaderboardButtonPressed(false)}
+                onMouseLeave={() => setIsLeaderboardButtonPressed(false)}
+                onTouchStart={() => setIsLeaderboardButtonPressed(true)}
+                onTouchEnd={() => setIsLeaderboardButtonPressed(false)}
                 style={{
                     position: 'absolute',
                     top: '20px',
@@ -352,6 +358,8 @@ export function BMInterface() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 10,
+                    transform: isLeaderboardButtonPressed ? 'scale(0.9)' : 'scale(1)',
+                    transition: 'transform 90ms ease-out'
                 }}
             >
                 <img src="/leaderboard_button.png" alt="Leaderboard" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -668,6 +676,11 @@ export function BMInterface() {
 
                         <button
                             onClick={() => setShowLeaderboard(false)}
+                            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                            onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
                             style={{
                                 width: '100%',
                                 marginTop: '20px',
@@ -679,7 +692,8 @@ export function BMInterface() {
                                 fontSize: '16px',
                                 fontWeight: 'bold',
                                 cursor: 'pointer',
-                                textTransform: 'uppercase'
+                                textTransform: 'uppercase',
+                                transition: 'transform 90ms ease-out'
                             }}
                         >
                             CLOSE
