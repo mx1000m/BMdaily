@@ -58,19 +58,34 @@ export const handler = async (event: any) => {
       transport: http(alchemyUrl),
     });
 
-    // Get recent BM events from last 7 days for better reliability
+    // Get recent BM events - but limit to 100 blocks to work with free tier
     const currentBlock = await publicClient.getBlockNumber();
-    const blocksToScan = 7 * 24 * 60 * 4; // ~7 days worth of blocks (1 block per 15s on Base)
-    const fromBlock = currentBlock - BigInt(blocksToScan);
+    const fromBlock = currentBlock - BigInt(100); // Only last 100 blocks for free tier
 
     console.log(`Fetching events from block ${fromBlock} to ${currentBlock}`);
 
-    const events = await publicClient.getLogs({
-      address: bmContractAddress,
-      event: bmAbi[0],
-      fromBlock,
-      toBlock: currentBlock,
-    });
+    // Fetch events in batches of 10 (Alchemy free tier limit)
+    const events: any[] = [];
+    const batchSize = 10;
+    
+    for (let startBlock = fromBlock; startBlock <= currentBlock; startBlock += BigInt(batchSize)) {
+      const endBlock = startBlock + BigInt(batchSize - 1) > currentBlock 
+        ? currentBlock 
+        : startBlock + BigInt(batchSize - 1);
+      
+      try {
+        const batchEvents = await publicClient.getLogs({
+          address: bmContractAddress,
+          event: bmAbi[0],
+          fromBlock: startBlock,
+          toBlock: endBlock,
+        });
+        events.push(...batchEvents);
+      } catch (error) {
+        console.error(`Error fetching blocks ${startBlock} to ${endBlock}:`, error);
+        // Continue with other batches
+      }
+    }
 
     console.log(`Fetched ${events.length} BM events`);
 
