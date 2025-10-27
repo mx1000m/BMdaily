@@ -1,5 +1,7 @@
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const bmContractAddress = '0x47EAd660725c7821c7349DF42579dBE857c02715' as `0x${string}`;
 
@@ -30,26 +32,58 @@ interface LeaderboardEntry {
   name?: string;
 }
 
-// Cache for leaderboard data (in-memory)
-let cachedLeaderboard: LeaderboardEntry[] = [];
-let cacheTimestamp = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+interface LeaderboardData {
+  lastUpdate: string;
+  entries: LeaderboardEntry[];
+}
+
+const DATA_FILE_PATH = '/tmp/leaderboard-data.json';
+
+// Helper functions to read/write leaderboard data
+function readLeaderboardData(): LeaderboardData {
+  try {
+    if (fs.existsSync(DATA_FILE_PATH)) {
+      const content = fs.readFileSync(DATA_FILE_PATH, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (error) {
+    console.error('Error reading leaderboard data:', error);
+  }
+  return { lastUpdate: new Date('2024-10-15').toISOString(), entries: [] };
+}
+
+function writeLeaderboardData(data: LeaderboardData) {
+  try {
+    fs.writeFileSync(DATA_FILE_PATH, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error writing leaderboard data:', error);
+  }
+}
 
 export const handler = async (event: any) => {
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // Return cached data if available and not expired
-  if (Date.now() - cacheTimestamp < CACHE_DURATION && cachedLeaderboard.length > 0) {
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entries: cachedLeaderboard }),
-    };
-  }
-
   try {
+    // Read existing leaderboard data
+    let leaderboardData = readLeaderboardData();
+    const lastUpdate = new Date(leaderboardData.lastUpdate);
+    const now = new Date();
+    
+    // Check if we need to update (update once per day)
+    const needsUpdate = now.getTime() - lastUpdate.getTime() > 24 * 60 * 60 * 1000;
+    
+    if (!needsUpdate && leaderboardData.entries.length > 0) {
+      // Return existing data if still fresh
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries: leaderboardData.entries }),
+      };
+    }
+
+    // Need to update - fetch recent BMs and merge with existing
     // Use Alchemy RPC endpoint for better reliability
     const alchemyUrl = process.env.ALCHEMY_BASE_RPC || 'https://base-mainnet.g.alchemy.com/v2/pBWWRwxvrlovShZdNr9M_';
     
@@ -87,46 +121,54 @@ export const handler = async (event: any) => {
       }
     }
 
-    console.log(`Fetched ${events.length} BM events`);
+    console.log(`Fetched ${events.length} recent BM events since last update`);
 
-    // Aggregate BM counts per user
-    const counts = new Map<string, number>();
+    // Build a map of existing counts
+    const existingCounts = new Map<string, number>();
+    leaderboardData.entries.forEach(entry => {
+      existingCounts.set(entry.address.toLowerCase(), entry.count);
+    });
+
+    // Add new BM counts to existing
     for (const evt of events) {
       const addr = evt.args.user;
       if (addr) {
-        counts.set(addr.toLowerCase(), (counts.get(addr.toLowerCase()) || 0) + 1);
+        const addrLower = addr.toLowerCase();
+        existingCounts.set(addrLower, (existingCounts.get(addrLower) || 0) + 1);
       }
     }
 
-    console.log(`Found ${counts.size} unique addresses`);
+    console.log(`Total unique addresses: ${existingCounts.size}`);
 
     // Convert to array and sort
-    const entries: LeaderboardEntry[] = Array.from(counts.entries())
+    const allEntries: LeaderboardEntry[] = Array.from(existingCounts.entries())
       .map(([address, count]) => ({ address, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10
 
-    console.log(`Returning ${entries.length} leaderboard entries`);
+    console.log(`Returning ${allEntries.length} leaderboard entries`);
 
-    // Update cache
-    cachedLeaderboard = entries;
-    cacheTimestamp = Date.now();
+    // Update the persisted data
+    leaderboardData.entries = allEntries;
+    leaderboardData.lastUpdate = now.toISOString();
+    writeLeaderboardData(leaderboardData);
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entries }),
+      body: JSON.stringify({ entries: allEntries }),
     };
   } catch (error) {
     console.error('Leaderboard error:', error);
     
-    // Return cached data even if stale if we have it
-    if (cachedLeaderboard.length > 0) {
-      console.log('Returning stale cached data due to error');
+    // Return existing data even if we can't update
+    const existingData = readLeaderboardData();
+    if (existingData.entries.length > 0) {
+      console.log('Returning existing data due to error');
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: cachedLeaderboard }),
+        body: JSON.stringify({ entries: existingData.entries }),
       };
     }
     
