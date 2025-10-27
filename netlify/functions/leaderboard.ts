@@ -1,21 +1,4 @@
-import { createPublicClient, http } from 'viem';
-import { base } from 'viem/chains';
-
-const bmContractAddress = '0x47EAd660725c7821c7349DF42579dBE857c02715' as `0x${string}`;
-
-const bmAbi = [
-  {
-    type: 'event',
-    name: 'BM',
-    inputs: [
-      { name: 'user', type: 'address', indexed: true },
-      { name: 'recipient', type: 'address', indexed: true },
-      { name: 'userCount', type: 'uint256', indexed: false },
-      { name: 'totalCount', type: 'uint256', indexed: false },
-    ],
-    anonymous: false,
-  },
-] as const;
+const bmContractAddress = '0x47EAd660725c7821c7349DF42579dBE857c02715';
 
 interface LeaderboardEntry {
   address: string;
@@ -26,7 +9,7 @@ interface LeaderboardEntry {
 // Cache to avoid repeated API calls
 let cachedData: LeaderboardEntry[] = [];
 let cacheTime = 0;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour cache
 
 export const handler = async (event: any) => {
   if (event.httpMethod !== 'GET') {
@@ -43,35 +26,37 @@ export const handler = async (event: any) => {
       };
     }
 
-    const alchemyUrl = process.env.ALCHEMY_BASE_RPC || 'https://base-mainnet.g.alchemy.com/v2/pBWWRwxvrlovShZdNr9M_';
+    // Fetch BM events from Basescan API
+    // Basescan doesn't require API key for reasonable usage
+    const apiUrl = `https://api.basescan.org/api?module=logs&action=getLogs&address=${bmContractAddress}&topic0=0x92c259cac325cc3ab274625712152620f8924d3dd0d2e8a8739859cdd609519c`;
     
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: http(alchemyUrl),
-    });
-
-    // Fetch from recent blocks only (last 1000 blocks ~4 hours)
-    const currentBlock = await publicClient.getBlockNumber();
-    const fromBlock = currentBlock - BigInt(1000); // Last 1000 blocks
+    console.log('Fetching BM events from Basescan...');
+    const response = await fetch(apiUrl);
     
-    console.log(`Fetching from block ${fromBlock} to ${currentBlock}`);
+    if (!response.ok) {
+      throw new Error(`Basescan API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status !== '1' || !data.result) {
+      throw new Error(`Basescan API error: ${data.message || 'Unknown error'}`);
+    }
 
-    // Fetch recent BM events only
-    const events = await publicClient.getLogs({
-      address: bmContractAddress,
-      event: bmAbi[0],
-      fromBlock,
-      toBlock: currentBlock,
-    });
+    const events = Array.isArray(data.result) ? data.result : [];
+    console.log(`Found ${events.length} BM events`);
 
-    console.log(`Found ${events.length} total BM events`);
-
-    // Aggregate counts
+    // Aggregate counts from event logs
+    // In the BM event, the user address is in topic1 (indexed parameter)
     const counts = new Map<string, number>();
-    for (const evt of events) {
-      const addr = evt.args.user;
-      if (addr) {
-        counts.set(addr.toLowerCase(), (counts.get(addr.toLowerCase()) || 0) + 1);
+    
+    for (const event of events) {
+      // User address is in topic1 (indexed parameter)
+      if (event.topics && event.topics.length > 1) {
+        // Extract address from topic1 (it's padded with zeros)
+        const topic = event.topics[1];
+        const userAddress = '0x' + topic.slice(26); // Remove the 0x prefix and topic hash, keep the address
+        counts.set(userAddress.toLowerCase(), (counts.get(userAddress.toLowerCase()) || 0) + 1);
       }
     }
 
@@ -79,6 +64,8 @@ export const handler = async (event: any) => {
       .map(([address, count]) => ({ address, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
+
+    console.log(`Top 10 users: ${entries.length} entries`);
 
     // Update cache
     cachedData = entries;
