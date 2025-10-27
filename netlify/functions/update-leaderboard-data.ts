@@ -3,6 +3,7 @@ import { getStore } from '@netlify/blobs';
 const bmContractAddress = '0x47EAd660725c7821c7349DF42579dBE857c02715';
 
 export const handler = async (event: any) => {
+  console.log('Starting update-leaderboard-data function...');
   try {
     // Use Alchemy API to fetch all BM events using a pagination approach
     const alchemyUrl = 'https://base-mainnet.g.alchemy.com/v2/pBWWRwxvrlovShZdNr9M_';
@@ -77,7 +78,11 @@ export const handler = async (event: any) => {
       .sort((a, b) => b.count - a.count);
 
     // Store in Netlify Blobs
-    const store = getStore({ name: 'leaderboard' });
+    const store = getStore({ 
+      name: 'leaderboard',
+      siteID: process.env.NETLIFY_SITE_ID,
+      token: process.env.NETLIFY_BLOBS_TOKEN
+    });
     await store.set('entries', JSON.stringify(entries));
     await store.set('lastUpdate', new Date().toISOString());
 

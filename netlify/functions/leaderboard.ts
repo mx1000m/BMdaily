@@ -13,7 +13,11 @@ export const handler = async (event: any) => {
 
   try {
     // Get leaderboard from Netlify Blobs (persistent storage)
-    const store = getStore({ name: 'leaderboard' });
+    const store = getStore({ 
+      name: 'leaderboard',
+      siteID: process.env.NETLIFY_SITE_ID,
+      token: process.env.NETLIFY_BLOBS_TOKEN
+    });
     const data = await store.get('entries', { type: 'json' });
     
     if (data && Array.isArray(data)) {
