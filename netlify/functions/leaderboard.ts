@@ -50,13 +50,13 @@ export const handler = async (event: any) => {
       transport: http(alchemyUrl),
     });
 
-    // Fetch from contract deployment block
+    // Fetch from recent blocks only (last 1000 blocks ~4 hours)
     const currentBlock = await publicClient.getBlockNumber();
-    const fromBlock = BigInt(36776590); // Contract deployment block from Basescan
+    const fromBlock = currentBlock - BigInt(1000); // Last 1000 blocks
     
     console.log(`Fetching from block ${fromBlock} to ${currentBlock}`);
 
-    // Fetch all BM events from contract
+    // Fetch recent BM events only
     const events = await publicClient.getLogs({
       address: bmContractAddress,
       event: bmAbi[0],
