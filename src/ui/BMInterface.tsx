@@ -176,25 +176,25 @@ export function BMInterface() {
         const chainLast = typeof lastBmTs === 'bigint' ? Number(lastBmTs) * 1000 : 0;
         const effectiveLast = lastBmLocalTs ?? chainLast;
         
-        // Get the current time in GMT
-        const nowGMT = new Date(Date.now() + (new Date().getTimezoneOffset() * 60000));
+        // Get the current time in UTC
+        const nowUTC = new Date();
         
-        // Get today's 10pm GMT (22:00 UTC)
-        const todayResetGMT = new Date(nowGMT);
-        todayResetGMT.setUTCHours(22, 0, 0, 0);
+        // Get today's midnight UTC (00:00 UTC)
+        const todayResetUTC = new Date(nowUTC);
+        todayResetUTC.setUTCHours(0, 0, 0, 0);
         
-        // Get yesterday's 10pm GMT to check if user BM'd since then
-        const yesterdayResetGMT = new Date(todayResetGMT);
-        yesterdayResetGMT.setUTCDate(yesterdayResetGMT.getUTCDate() - 1);
+        // Get yesterday's midnight UTC to check if user BM'd since then
+        const yesterdayResetUTC = new Date(todayResetUTC);
+        yesterdayResetUTC.setUTCDate(yesterdayResetUTC.getUTCDate() - 1);
         
-        // If user hasn't BM'd since yesterday's 10pm GMT, they can BM now
-        if (effectiveLast === 0 || effectiveLast < yesterdayResetGMT.getTime()) {
+        // If user hasn't BM'd since yesterday's midnight UTC, they can BM now
+        if (effectiveLast === 0 || effectiveLast < yesterdayResetUTC.getTime()) {
             return 0;
         }
         
-        // User has BM'd since today's reset, calculate time until next 10pm GMT
-        let nextReset = new Date(todayResetGMT);
-        if (nowGMT >= todayResetGMT) {
+        // User has BM'd since today's reset, calculate time until next midnight UTC
+        let nextReset = new Date(todayResetUTC);
+        if (nowUTC >= todayResetUTC) {
             // Already passed today's reset, wait for tomorrow
             nextReset.setUTCDate(nextReset.getUTCDate() + 1);
         }
