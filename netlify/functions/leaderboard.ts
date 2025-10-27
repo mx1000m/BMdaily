@@ -52,7 +52,7 @@ export const handler = async (event: any) => {
 
     // Fetch from contract deployment block
     const currentBlock = await publicClient.getBlockNumber();
-    const fromBlock = BigInt(37000000); // Contract deployment block
+    const fromBlock = BigInt(36776590); // Contract deployment block from Basescan
     
     console.log(`Fetching from block ${fromBlock} to ${currentBlock}`);
 
