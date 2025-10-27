@@ -1,7 +1,5 @@
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
-import * as fs from 'fs';
-import * as path from 'path';
 
 const bmContractAddress = '0x47EAd660725c7821c7349DF42579dBE857c02715' as `0x${string}`;
 
@@ -17,13 +15,6 @@ const bmAbi = [
     ],
     anonymous: false,
   },
-  {
-    type: 'function',
-    name: 'bmCount',
-    inputs: [{ name: 'user', type: 'address', internalType: 'address' }],
-    outputs: [{ name: 'count', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
 ] as const;
 
 interface LeaderboardEntry {
@@ -32,33 +23,10 @@ interface LeaderboardEntry {
   name?: string;
 }
 
-interface LeaderboardData {
-  lastUpdate: string;
-  entries: LeaderboardEntry[];
-}
-
-const DATA_FILE_PATH = '/tmp/leaderboard-data.json';
-
-// Helper functions to read/write leaderboard data
-function readLeaderboardData(): LeaderboardData {
-  try {
-    if (fs.existsSync(DATA_FILE_PATH)) {
-      const content = fs.readFileSync(DATA_FILE_PATH, 'utf-8');
-      return JSON.parse(content);
-    }
-  } catch (error) {
-    console.error('Error reading leaderboard data:', error);
-  }
-  return { lastUpdate: new Date('2024-10-15').toISOString(), entries: [] };
-}
-
-function writeLeaderboardData(data: LeaderboardData) {
-  try {
-    fs.writeFileSync(DATA_FILE_PATH, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Error writing leaderboard data:', error);
-  }
-}
+// Cache to avoid repeated API calls
+let cachedData: LeaderboardEntry[] = [];
+let cacheTime = 0;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 export const handler = async (event: any) => {
   if (event.httpMethod !== 'GET') {
@@ -66,25 +34,15 @@ export const handler = async (event: any) => {
   }
 
   try {
-    // Read existing leaderboard data
-    let leaderboardData = readLeaderboardData();
-    const lastUpdate = new Date(leaderboardData.lastUpdate);
-    const now = new Date();
-    
-    // Check if we need to update (update once per day)
-    const needsUpdate = now.getTime() - lastUpdate.getTime() > 24 * 60 * 60 * 1000;
-    
-    if (!needsUpdate && leaderboardData.entries.length > 0) {
-      // Return existing data if still fresh
+    // Check cache
+    if (Date.now() - cacheTime < CACHE_TTL && cachedData.length > 0) {
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: leaderboardData.entries }),
+        body: JSON.stringify({ entries: cachedData }),
       };
     }
 
-    // Need to update - fetch recent BMs and merge with existing
-    // Use Alchemy RPC endpoint for better reliability
     const alchemyUrl = process.env.ALCHEMY_BASE_RPC || 'https://base-mainnet.g.alchemy.com/v2/pBWWRwxvrlovShZdNr9M_';
     
     const publicClient = createPublicClient({
@@ -92,109 +50,54 @@ export const handler = async (event: any) => {
       transport: http(alchemyUrl),
     });
 
-    // Check if this is the first time (no existing data)
-    const isFirstTime = leaderboardData.entries.length === 0;
-    
+    // Fetch from contract deployment block
     const currentBlock = await publicClient.getBlockNumber();
+    const fromBlock = BigInt(37000000); // Contract deployment block
     
-    // If first time or no recent data, fetch from contract deployment block
-    // Otherwise fetch only last 24 hours (~5760 blocks)
-    const blocksIn24h = 24 * 60 * 4; // ~4 blocks per minute on Base
-    let fromBlock: bigint;
-    
-    if (isFirstTime) {
-      // First time: fetch from contract deployment
-      // Contract was deployed on Oct 15, 2024, block ~37000000
-      fromBlock = BigInt(37000000);
-      console.log(`First time - fetching from contract deployment block ${fromBlock}`);
-    } else {
-      fromBlock = currentBlock - BigInt(blocksIn24h);
-      console.log(`Fetching last 24 hours from block ${fromBlock} to ${currentBlock}`);
-    }
+    console.log(`Fetching from block ${fromBlock} to ${currentBlock}`);
 
-    // Fetch events in batches of 100 blocks (Alchemy free tier limit is 10, so we use 10)
-    const events: any[] = [];
-    const batchSize = 10; // Alchemy free tier limit
-    
-    const totalBlocks = currentBlock - fromBlock;
-    const numBatches = Math.ceil(Number(totalBlocks) / batchSize);
-    
-    console.log(`Fetching ${totalBlocks} blocks in ${numBatches} batches of ${batchSize}`);
-    
-    for (let i = 0; i < numBatches; i++) {
-      const startBlock = fromBlock + BigInt(i * batchSize);
-      const endBlock = startBlock + BigInt(batchSize - 1) > currentBlock 
-        ? currentBlock 
-        : startBlock + BigInt(batchSize - 1);
-      
-      try {
-        const batchEvents = await publicClient.getLogs({
-          address: bmContractAddress,
-          event: bmAbi[0],
-          fromBlock: startBlock,
-          toBlock: endBlock,
-        });
-        events.push(...batchEvents);
-        console.log(`Batch ${i + 1}/${numBatches}: Found ${batchEvents.length} events`);
-      } catch (error) {
-        console.error(`Error fetching blocks ${startBlock} to ${endBlock}:`, error);
-        // Continue with other batches
-      }
-      
-      // Add a small delay to avoid rate limiting
-      if (i < numBatches - 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-
-    console.log(`Fetched ${events.length} recent BM events since last update`);
-
-    // Build a map of existing counts
-    const existingCounts = new Map<string, number>();
-    leaderboardData.entries.forEach(entry => {
-      existingCounts.set(entry.address.toLowerCase(), entry.count);
+    // Fetch all BM events from contract
+    const events = await publicClient.getLogs({
+      address: bmContractAddress,
+      event: bmAbi[0],
+      fromBlock,
+      toBlock: currentBlock,
     });
 
-    // Add new BM counts to existing
+    console.log(`Found ${events.length} total BM events`);
+
+    // Aggregate counts
+    const counts = new Map<string, number>();
     for (const evt of events) {
       const addr = evt.args.user;
       if (addr) {
-        const addrLower = addr.toLowerCase();
-        existingCounts.set(addrLower, (existingCounts.get(addrLower) || 0) + 1);
+        counts.set(addr.toLowerCase(), (counts.get(addr.toLowerCase()) || 0) + 1);
       }
     }
 
-    console.log(`Total unique addresses: ${existingCounts.size}`);
-
-    // Convert to array and sort
-    const allEntries: LeaderboardEntry[] = Array.from(existingCounts.entries())
+    const entries: LeaderboardEntry[] = Array.from(counts.entries())
       .map(([address, count]) => ({ address, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // Top 10
+      .slice(0, 10);
 
-    console.log(`Returning ${allEntries.length} leaderboard entries`);
-
-    // Update the persisted data
-    leaderboardData.entries = allEntries;
-    leaderboardData.lastUpdate = now.toISOString();
-    writeLeaderboardData(leaderboardData);
+    // Update cache
+    cachedData = entries;
+    cacheTime = Date.now();
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entries: allEntries }),
+      body: JSON.stringify({ entries }),
     };
   } catch (error) {
     console.error('Leaderboard error:', error);
     
-    // Return existing data even if we can't update
-    const existingData = readLeaderboardData();
-    if (existingData.entries.length > 0) {
-      console.log('Returning existing data due to error');
+    // Return cached data if available
+    if (cachedData.length > 0) {
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: existingData.entries }),
+        body: JSON.stringify({ entries: cachedData }),
       };
     }
     
@@ -205,4 +108,3 @@ export const handler = async (event: any) => {
     };
   }
 };
-
