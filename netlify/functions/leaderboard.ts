@@ -30,21 +30,38 @@ interface LeaderboardEntry {
   name?: string;
 }
 
+// Cache for leaderboard data (in-memory)
+let cachedLeaderboard: LeaderboardEntry[] = [];
+let cacheTimestamp = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export const handler = async (event: any) => {
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
+  // Return cached data if available and not expired
+  if (Date.now() - cacheTimestamp < CACHE_DURATION && cachedLeaderboard.length > 0) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries: cachedLeaderboard }),
+    };
+  }
+
   try {
     const publicClient = createPublicClient({
       chain: base,
-      transport: http(),
+      // Try multiple RPC endpoints
+      transport: http(process.env.ALCHEMY_BASE_RPC || 'https://mainnet.base.org'),
     });
 
-    // Get recent BM events from last 30 days (faster than scanning all history)
+    // Get recent BM events from last 7 days for better reliability
     const currentBlock = await publicClient.getBlockNumber();
-    const blocksToScan = 30 * 24 * 60 * 4; // ~30 days worth of blocks (1 block per 15s on Base)
+    const blocksToScan = 7 * 24 * 60 * 4; // ~7 days worth of blocks (1 block per 15s on Base)
     const fromBlock = currentBlock - BigInt(blocksToScan);
+
+    console.log(`Fetching events from block ${fromBlock} to ${currentBlock}`);
 
     const events = await publicClient.getLogs({
       address: bmContractAddress,
@@ -74,6 +91,10 @@ export const handler = async (event: any) => {
 
     console.log(`Returning ${entries.length} leaderboard entries`);
 
+    // Update cache
+    cachedLeaderboard = entries;
+    cacheTimestamp = Date.now();
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -81,6 +102,17 @@ export const handler = async (event: any) => {
     };
   } catch (error) {
     console.error('Leaderboard error:', error);
+    
+    // Return cached data even if stale if we have it
+    if (cachedLeaderboard.length > 0) {
+      console.log('Returning stale cached data due to error');
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries: cachedLeaderboard }),
+      };
+    }
+    
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
