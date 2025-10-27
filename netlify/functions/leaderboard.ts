@@ -50,10 +50,12 @@ export const handler = async (event: any) => {
   }
 
   try {
+    // Use Alchemy RPC endpoint for better reliability
+    const alchemyUrl = process.env.ALCHEMY_BASE_RPC || 'https://base-mainnet.g.alchemy.com/v2/pBWWRwxvrlovShZdNr9M_';
+    
     const publicClient = createPublicClient({
       chain: base,
-      // Try multiple RPC endpoints
-      transport: http(process.env.ALCHEMY_BASE_RPC || 'https://mainnet.base.org'),
+      transport: http(alchemyUrl),
     });
 
     // Get recent BM events from last 7 days for better reliability
