@@ -92,17 +92,37 @@ export const handler = async (event: any) => {
       transport: http(alchemyUrl),
     });
 
-    // Get recent BM events - but limit to 100 blocks to work with free tier
-    const currentBlock = await publicClient.getBlockNumber();
-    const fromBlock = currentBlock - BigInt(100); // Only last 100 blocks for free tier
-
-    console.log(`Fetching events from block ${fromBlock} to ${currentBlock}`);
-
-    // Fetch events in batches of 10 (Alchemy free tier limit)
-    const events: any[] = [];
-    const batchSize = 10;
+    // Check if this is the first time (no existing data)
+    const isFirstTime = leaderboardData.entries.length === 0;
     
-    for (let startBlock = fromBlock; startBlock <= currentBlock; startBlock += BigInt(batchSize)) {
+    const currentBlock = await publicClient.getBlockNumber();
+    
+    // If first time or no recent data, fetch from contract deployment block
+    // Otherwise fetch only last 24 hours (~5760 blocks)
+    const blocksIn24h = 24 * 60 * 4; // ~4 blocks per minute on Base
+    let fromBlock: bigint;
+    
+    if (isFirstTime) {
+      // First time: fetch from contract deployment
+      // Contract was deployed on Oct 15, 2024, block ~37000000
+      fromBlock = BigInt(37000000);
+      console.log(`First time - fetching from contract deployment block ${fromBlock}`);
+    } else {
+      fromBlock = currentBlock - BigInt(blocksIn24h);
+      console.log(`Fetching last 24 hours from block ${fromBlock} to ${currentBlock}`);
+    }
+
+    // Fetch events in batches of 100 blocks (Alchemy free tier limit is 10, so we use 10)
+    const events: any[] = [];
+    const batchSize = 10; // Alchemy free tier limit
+    
+    const totalBlocks = currentBlock - fromBlock;
+    const numBatches = Math.ceil(Number(totalBlocks) / batchSize);
+    
+    console.log(`Fetching ${totalBlocks} blocks in ${numBatches} batches of ${batchSize}`);
+    
+    for (let i = 0; i < numBatches; i++) {
+      const startBlock = fromBlock + BigInt(i * batchSize);
       const endBlock = startBlock + BigInt(batchSize - 1) > currentBlock 
         ? currentBlock 
         : startBlock + BigInt(batchSize - 1);
@@ -115,9 +135,15 @@ export const handler = async (event: any) => {
           toBlock: endBlock,
         });
         events.push(...batchEvents);
+        console.log(`Batch ${i + 1}/${numBatches}: Found ${batchEvents.length} events`);
       } catch (error) {
         console.error(`Error fetching blocks ${startBlock} to ${endBlock}:`, error);
         // Continue with other batches
+      }
+      
+      // Add a small delay to avoid rate limiting
+      if (i < numBatches - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
