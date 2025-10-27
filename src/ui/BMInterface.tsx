@@ -175,9 +175,32 @@ export function BMInterface() {
     const remainingMs = useMemo(() => {
         const chainLast = typeof lastBmTs === 'bigint' ? Number(lastBmTs) * 1000 : 0;
         const effectiveLast = lastBmLocalTs ?? chainLast;
-        const resetAt = effectiveLast + dayMs;
-        return Math.max(0, resetAt - now);
-    }, [lastBmTs, lastBmLocalTs, now]);
+        
+        // Get the current time in GMT
+        const nowGMT = new Date(Date.now() + (new Date().getTimezoneOffset() * 60000));
+        
+        // Get today's 10pm GMT (22:00 UTC)
+        const todayResetGMT = new Date(nowGMT);
+        todayResetGMT.setUTCHours(22, 0, 0, 0);
+        
+        // Get yesterday's 10pm GMT to check if user BM'd since then
+        const yesterdayResetGMT = new Date(todayResetGMT);
+        yesterdayResetGMT.setUTCDate(yesterdayResetGMT.getUTCDate() - 1);
+        
+        // If user hasn't BM'd since yesterday's 10pm GMT, they can BM now
+        if (effectiveLast === 0 || effectiveLast < yesterdayResetGMT.getTime()) {
+            return 0;
+        }
+        
+        // User has BM'd since today's reset, calculate time until next 10pm GMT
+        let nextReset = new Date(todayResetGMT);
+        if (nowGMT >= todayResetGMT) {
+            // Already passed today's reset, wait for tomorrow
+            nextReset.setUTCDate(nextReset.getUTCDate() + 1);
+        }
+        
+        return Math.max(0, nextReset.getTime() - Date.now());
+    }, [lastBmTs, lastBmLocalTs]);
 
     const remainingText = useMemo(() => {
         const s = Math.ceil(remainingMs / 1000);
