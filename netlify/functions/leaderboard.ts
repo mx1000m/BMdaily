@@ -41,22 +41,30 @@ export const handler = async (event: any) => {
       transport: http(),
     });
 
-    // Get BM events from the beginning
+    // Get recent BM events from last 30 days (faster than scanning all history)
+    const currentBlock = await publicClient.getBlockNumber();
+    const blocksToScan = 30 * 24 * 60 * 4; // ~30 days worth of blocks (1 block per 15s on Base)
+    const fromBlock = currentBlock - BigInt(blocksToScan);
+
     const events = await publicClient.getLogs({
       address: bmContractAddress,
       event: bmAbi[0],
-      fromBlock: 'earliest',
-      toBlock: 'latest',
+      fromBlock,
+      toBlock: currentBlock,
     });
+
+    console.log(`Fetched ${events.length} BM events`);
 
     // Aggregate BM counts per user
     const counts = new Map<string, number>();
     for (const evt of events) {
       const addr = evt.args.user;
       if (addr) {
-        counts.set(addr, (counts.get(addr) || 0) + 1);
+        counts.set(addr.toLowerCase(), (counts.get(addr.toLowerCase()) || 0) + 1);
       }
     }
+
+    console.log(`Found ${counts.size} unique addresses`);
 
     // Convert to array and sort
     const entries: LeaderboardEntry[] = Array.from(counts.entries())
@@ -64,13 +72,7 @@ export const handler = async (event: any) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10
 
-    // Fetch names for Base names (optional enhancement)
-    for (const entry of entries) {
-      try {
-        // Try to resolve ENS or base name here if needed
-        // For now, we'll just return the address
-      } catch {}
-    }
+    console.log(`Returning ${entries.length} leaderboard entries`);
 
     return {
       statusCode: 200,
@@ -82,7 +84,7 @@ export const handler = async (event: any) => {
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Failed to fetch leaderboard' }),
+      body: JSON.stringify({ error: 'Failed to fetch leaderboard', details: String(error) }),
     };
   }
 };

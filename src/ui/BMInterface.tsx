@@ -264,6 +264,11 @@ export function BMInterface() {
         setIsLoadingLeaderboard(true);
         try {
             const response = await fetch('/.netlify/functions/leaderboard');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Failed to fetch leaderboard:', errorData);
+                return;
+            }
             const data = await response.json();
             setLeaderboardData(data.entries || []);
         } catch (error) {
