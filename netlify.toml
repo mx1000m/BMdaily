@@ -7,5 +7,9 @@
   directory = "netlify/functions"
   # node_bundler = "esbuild"  # optional; defaults to esbuild
 
+# Enable Netlify Blobs for persistent storage
+[[blobs]]
+path = "leaderboard"
+
 # Note: schedule is defined inside code via `schedule('*/5 * * * *', handler)`
 
