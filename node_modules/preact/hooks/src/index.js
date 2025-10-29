@@ -25,7 +25,10 @@ let oldCommit = options._commit;
 let oldBeforeUnmount = options.unmount;
 let oldRoot = options._root;
 
-const RAF_TIMEOUT = 100;
+// We take the minimum timeout for requestAnimationFrame to ensure that
+// the callback is invoked after the next frame. 35ms is based on a 30hz
+// refresh rate, which is the minimum rate for a smooth user experience.
+const RAF_TIMEOUT = 35;
 let prevRaf;
 
 /** @type {(vnode: import('./internal').VNode) => void} */
@@ -249,7 +252,7 @@ export function useReducer(reducer, initialState, init) {
 				// We check whether we have components with a nextValue set that
 				// have values that aren't equal to one another this pushes
 				// us to update further down the tree
-				let shouldUpdate = false;
+				let shouldUpdate = hookState._component.props !== p;
 				stateHooks.forEach(hookItem => {
 					if (hookItem._nextValue) {
 						const currentValue = hookItem._value[0];
@@ -259,11 +262,9 @@ export function useReducer(reducer, initialState, init) {
 					}
 				});
 
-				return shouldUpdate || hookState._component.props !== p
-					? prevScu
-						? prevScu.call(this, p, s, c)
-						: true
-					: false;
+				return prevScu
+					? prevScu.call(this, p, s, c) || shouldUpdate
+					: shouldUpdate;
 			}
 
 			currentComponent.shouldComponentUpdate = updateHookState;
@@ -322,8 +323,11 @@ export function useImperativeHandle(ref, createHandle, args) {
 	useLayoutEffect(
 		() => {
 			if (typeof ref == 'function') {
-				ref(createHandle());
-				return () => ref(null);
+				const result = ref(createHandle());
+				return () => {
+					ref(null);
+					if (result && typeof result == 'function') result();
+				};
 			} else if (ref) {
 				ref.current = createHandle();
 				return () => (ref.current = null);
@@ -425,7 +429,7 @@ export function useId() {
 	const state = getHookState(currentIndex++, 11);
 	if (!state._value) {
 		// Grab either the root node or the nearest async boundary node.
-		/** @type {import('./internal.d').VNode} */
+		/** @type {import('./internal').VNode} */
 		let root = currentComponent._vnode;
 		while (root !== null && !root._mask && root._parent !== null) {
 			root = root._parent;

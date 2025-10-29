@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BMApp } from './ui/BMApp';
-import '@coinbase/onchainkit/styles.css';
+// AppKit CSS is loaded automatically via the library
 import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

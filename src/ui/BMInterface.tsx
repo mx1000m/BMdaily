@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { Wallet, ConnectWallet } from '@coinbase/onchainkit/wallet';
-import { useAccount, useWriteContract, useChainId, useSwitchChain, useReadContract, useConnect } from 'wagmi';
+import { useAccount, useWriteContract, useChainId, useSwitchChain, useReadContract, useConnect, useDisconnect } from 'wagmi';
 import { base } from 'viem/chains';
 import { bmContractAddress, bmAbi } from '../calls/bm';
 import baseLogo from '../../Base_Logo.png';
-import { Identity, Avatar, Name, Address } from '@coinbase/onchainkit/identity';
+import { AppKitConnectButton } from '@reown/appkit/react';
 
 export function BMInterface() {
     const { isConnected } = useAccount();
@@ -20,6 +19,11 @@ export function BMInterface() {
     const [fcName, setFcName] = useState<string | null>(null);
     const [fcPfp, setFcPfp] = useState<string | null>(null);
     
+    // Leaderboard state
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [leaderboardData, setLeaderboardData] = useState<Array<{ address: string; count: number; name?: string }>>([]);
+    const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
+    const [isLeaderboardButtonPressed, setIsLeaderboardButtonPressed] = useState(false);
 
     // Mobile-only dynamic width for identity card (grow to keep name in one line)
     const idWrapRef = useRef<HTMLDivElement | null>(null);
@@ -170,32 +174,9 @@ export function BMInterface() {
     const remainingMs = useMemo(() => {
         const chainLast = typeof lastBmTs === 'bigint' ? Number(lastBmTs) * 1000 : 0;
         const effectiveLast = lastBmLocalTs ?? chainLast;
-        
-        // Get the current time in UTC
-        const nowUTC = new Date();
-        
-        // Get today's midnight UTC (00:00 UTC)
-        const todayResetUTC = new Date(nowUTC);
-        todayResetUTC.setUTCHours(0, 0, 0, 0);
-        
-        // Get yesterday's midnight UTC to check if user BM'd since then
-        const yesterdayResetUTC = new Date(todayResetUTC);
-        yesterdayResetUTC.setUTCDate(yesterdayResetUTC.getUTCDate() - 1);
-        
-        // If user hasn't BM'd since yesterday's midnight UTC, they can BM now
-        if (effectiveLast === 0 || effectiveLast < yesterdayResetUTC.getTime()) {
-            return 0;
-        }
-        
-        // User has BM'd since today's reset, calculate time until next midnight UTC
-        let nextReset = new Date(todayResetUTC);
-        if (nowUTC >= todayResetUTC) {
-            // Already passed today's reset, wait for tomorrow
-            nextReset.setUTCDate(nextReset.getUTCDate() + 1);
-        }
-        
-        return Math.max(0, nextReset.getTime() - Date.now());
-    }, [lastBmTs, lastBmLocalTs]);
+        const resetAt = effectiveLast + dayMs;
+        return Math.max(0, resetAt - now);
+    }, [lastBmTs, lastBmLocalTs, now]);
 
     const remainingText = useMemo(() => {
         const s = Math.ceil(remainingMs / 1000);
@@ -277,6 +258,33 @@ export function BMInterface() {
         }
     }, [isConnected, connectFarcasterWallet]);
 
+    // Fetch leaderboard data
+    const fetchLeaderboard = useCallback(async () => {
+        setIsLoadingLeaderboard(true);
+        try {
+            const response = await fetch('/.netlify/functions/leaderboard');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Failed to fetch leaderboard:', errorData);
+                return;
+            }
+            const data = await response.json();
+            setLeaderboardData(data.entries || []);
+        } catch (error) {
+            console.error('Failed to fetch leaderboard:', error);
+            setLeaderboardData([]);
+        } finally {
+            setIsLoadingLeaderboard(false);
+        }
+    }, []);
+
+    const handleLeaderboardClick = useCallback(() => {
+        setShowLeaderboard(true);
+        if (leaderboardData.length === 0) {
+            void fetchLeaderboard();
+        }
+    }, [fetchLeaderboard, leaderboardData.length]);
+
     const sendBm = useCallback(async () => {
         if (!isConnected || isSending) return;
         try {
@@ -332,13 +340,55 @@ export function BMInterface() {
 
     return (
         <main className="app-main min-h-screen bg-black flex flex-col items-center justify-center p-6" style={{ position: 'relative', zIndex: 1 }}>
+            {/* Leaderboard Button */}
+            <button
+                onClick={handleLeaderboardClick}
+                onMouseDown={() => setIsLeaderboardButtonPressed(true)}
+                onMouseUp={() => setIsLeaderboardButtonPressed(false)}
+                onMouseLeave={() => setIsLeaderboardButtonPressed(false)}
+                onTouchStart={() => setIsLeaderboardButtonPressed(true)}
+                onTouchEnd={() => setIsLeaderboardButtonPressed(false)}
+                style={{
+                    position: 'absolute',
+                    top: '20px',
+                    left: '20px',
+                    width: '48px',
+                    height: '48px',
+                    background: '#0052FF',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    transform: isLeaderboardButtonPressed ? 'scale(0.9)' : 'scale(1)',
+                    transition: 'transform 90ms ease-out'
+                }}
+            >
+                <img src="/leaderboard_button.png" alt="Leaderboard" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </button>
+
             {isConnected && address && (
-                <div ref={idWrapRef} className="identity-card-mobile fix-top" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', width: mobileIdWidth ? `${mobileIdWidth}px` : undefined, transition: 'width 150ms ease' }}>
-                    <Identity address={address as `0x${string}`} chain={base} className="text-white">
-                        {fcPfp ? <img src={fcPfp} alt="pfp" style={{ width: 48, height: 48, borderRadius: '50%' }} /> : <Avatar />}
-                        {fcName ? <span data-testid="name" style={{ fontWeight: 700 }}>{fcName}</span> : <Name />}
-                        {!fcName && <Address />}
-                    </Identity>
+                <div ref={idWrapRef} className="identity-card-mobile fix-top" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', width: mobileIdWidth ? `${mobileIdWidth}px` : undefined, transition: 'width 150ms ease', background: '#1a1a1a', borderRadius: '10px', padding: '12px', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {fcPfp ? (
+                            <img src={fcPfp} alt="pfp" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+                        ) : (
+                            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#0052FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 'bold', fontSize: '18px' }}>
+                                {(address.substring(2, 4) || '0').toUpperCase()}
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {fcName ? (
+                                <span data-testid="name" style={{ fontWeight: 700, fontSize: '16px' }}>{fcName}</span>
+                            ) : (
+                                <span style={{ fontSize: '14px', fontFamily: 'monospace' }}>
+                                    {`${address.substring(0, 5)}...${address.substring(address.length - 4)}`}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                     {/* Extension block visually attached under the identity card */}
                     <div
                         style={{
@@ -374,11 +424,12 @@ export function BMInterface() {
             
             <img src={baseLogo} alt="Base logo" style={{ width: '219px', height: 'auto', marginTop: '0px', marginBottom: '24px' }} className="mobile-push-25 logo-mobile-offset logo-mobile-tight" />
             <div className="w-full max-w-md flex flex-col items-center gap-6 mobile-push-8">
-                <Wallet>
-                    <div id="hidden-connect-wallet-container" style={{ display: 'none' }}>
-                        <ConnectWallet />
-                    </div>
-                </Wallet>
+                <div id="hidden-connect-wallet-container" style={{ display: 'none' }}>
+                    <AppKitConnectButton />
+                </div>
+                {!isConnected && (
+                    <AppKitConnectButton />
+                )}
 
                 <button
                     onClick={handleTap}
@@ -568,6 +619,106 @@ export function BMInterface() {
                 </div>
             )}
 
+            {/* Leaderboard Modal */}
+            {showLeaderboard && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '20px'
+                }}
+                onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                        setShowLeaderboard(false);
+                    }
+                }}
+                >
+                    <div style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '2px solid #0052FF',
+                        borderRadius: '15px',
+                        padding: '20px',
+                        maxWidth: '500px',
+                        width: '100%',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
+                        boxShadow: '0 8px 32px rgba(0, 82, 255, 0.3)',
+                        position: 'relative'
+                    }}>
+                        <h2 style={{
+                            color: '#ffffff',
+                            fontSize: '24px',
+                            fontWeight: 'bold',
+                            textAlign: 'center',
+                            marginBottom: '20px',
+                            textTransform: 'uppercase'
+                        }}>
+                            BM LEADERBOARD
+                        </h2>
+
+                        {isLoadingLeaderboard ? (
+                            <div style={{ textAlign: 'center', color: '#ffffff', padding: '40px' }}>
+                                Loading...
+                            </div>
+                        ) : (
+                            <table style={{ width: '100%', color: '#ffffff', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.3)' }}>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>RANK</th>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>ADDRESS</th>
+                                        <th style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}>BM COUNT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {leaderboardData.map((entry, index) => {
+                                        const displayAddress = entry.name || 
+                                            `${entry.address.substring(0, 5)}...${entry.address.substring(entry.address.length - 4)}`;
+                                        return (
+                                            <tr key={entry.address} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                                <td style={{ padding: '12px', fontWeight: 'bold' }}>{index + 1}</td>
+                                                <td style={{ padding: '12px' }}>{displayAddress}</td>
+                                                <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}>{entry.count}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+
+                        <button
+                            onClick={() => setShowLeaderboard(false)}
+                            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.9)'}
+                            onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            style={{
+                                width: '100%',
+                                marginTop: '20px',
+                                backgroundColor: '#0052FF',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '12px',
+                                fontSize: '16px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                textTransform: 'uppercase',
+                                transition: 'transform 90ms ease-out'
+                            }}
+                        >
+                            CLOSE
+                        </button>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
